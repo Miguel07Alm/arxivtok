@@ -4,6 +4,7 @@ export interface Paper {
     id: string;
     title: string;
     summary: string;
+    originalSummary?: string;
     authors: string[];
     published: string;
     pdfLink?: string;

@@ -1,5 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { parseStringPromise } from "xml2js"
+import { simplifyAbstract } from "../../lib/gemini";
 
 const ARXIV_API_URL = "https://export.arxiv.org/api/query"
 const MEDRXIV_API_URL = "https://api.medrxiv.org/details/medrxiv"
@@ -42,18 +43,36 @@ export async function GET({ request }: APIEvent) {
 	const perPage = Number(url.searchParams.get("perPage")) || 10
 	const query = url.searchParams.get("q") || ""
 	const source = url.searchParams.get("source") || "arxiv"
+	
+	let papers;
 	switch (source) {
 		case "medrxiv":
-			return await fetchMedrxiv(query, page, perPage)
+			papers = await fetchMedrxiv(query, page, perPage)
+			break;
 		case "biorxiv":
-			return await fetchBiorxiv(query, page, perPage)
+			papers = await fetchBiorxiv(query, page, perPage)
+			break;
 		case "pubmed":
-			return await fetchPubmed(query, page, perPage)
+			papers = await fetchPubmed(query, page, perPage)
+			break;
 		case "hackernews":
-			return await fetchHackerNews(query, page, perPage);
+			papers = await fetchHackerNews(query, page, perPage)
+			break;
 		default:
-			return await fetchArxiv(query, page, perPage)
+			papers = await fetchArxiv(query, page, perPage)
 	}
+	let papersData = await papers.json()
+	
+	if (process.env.GEMINI_API_KEY) {
+		papersData = await Promise.all(papersData.map(async (paper: { summary: string }) => ({
+			...paper,
+			summary: await simplifyAbstract(paper.summary)
+		})));
+	}
+
+	return new Response(JSON.stringify(papersData), { 
+		headers: { "Content-Type": "application/json" } 
+	})
 }
 
 async function fetchArxiv(query: string, page: number, perPage: number): Promise<Response> {

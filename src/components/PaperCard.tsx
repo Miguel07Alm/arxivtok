@@ -15,6 +15,7 @@ import { updateReadingProgress } from "@/lib/progress";
 import { TutorialOverlay } from "./TutorialOverlay";
 import { AchievementToast } from "./AchievementToast";
 import { toast } from "solid-sonner";
+import MarkdownIt from "markdown-it";
 
 interface LatexParserProps {
     text: string;
@@ -102,69 +103,64 @@ const formatText = (text: string) => {
     return text;
 };
 
+const md = new MarkdownIt({
+    html: false,
+    breaks: true,
+    linkify: true,
+});
+
 export const LatexParser: Component<LatexParserProps> = (props) => {
     const parsedContent = createMemo(() => {
         let content = props.text;
-        let segments: Array<{
-            type: "text" | "math" | "display-math";
-            content: string;
-        }> = [];
-        let lastIndex = 0;
-
+        
+        // First pass: Extract and save LaTeX blocks
+        const latexBlocks: string[] = [];
         content = content.replace(PATTERNS.DISPLAY_MATH, (match, g1, g2) => {
             const formula = g1 || g2;
             try {
-                return `<div class="my-4 px-4 py-2 overflow-x-auto">${katex.renderToString(
-                    formula,
-                    { displayMode: true }
-                )}</div>`;
+                const rendered = katex.renderToString(formula, { displayMode: true });
+                latexBlocks.push(rendered);
+                return `%%LATEX_BLOCK_${latexBlocks.length - 1}%%`;
             } catch (error) {
                 console.error("KaTeX error:", error);
                 return `<div class="my-4 px-4 py-2 text-red-500 border border-red-300 rounded bg-red-50">${formula}</div>`;
             }
         });
 
-        const matches = Array.from(content.matchAll(PATTERNS.INLINE_MATH));
-
-        for (const match of matches) {
-            const formula = match[1] || match[2];
-            const startIndex = match.index!;
-
-            if (startIndex > lastIndex) {
-                segments.push({
-                    type: "text",
-                    content: formatText(content.slice(lastIndex, startIndex)),
-                });
-            }
-
+        content = content.replace(PATTERNS.INLINE_MATH, (match, g1, g2) => {
+            const formula = g1 || g2;
             try {
-                segments.push({
-                    type: "math",
-                    content: katex.renderToString(formula, {
-                        displayMode: false,
-                    }),
-                });
+                const rendered = katex.renderToString(formula, { displayMode: false });
+                latexBlocks.push(rendered);
+                return `%%LATEX_INLINE_${latexBlocks.length - 1}%%`;
             } catch (error) {
                 console.error("KaTeX error:", error);
-                segments.push({ type: "text", content: formula });
+                return formula;
             }
+        });
 
-            lastIndex = startIndex + match[0].length;
-        }
+        // Second pass: Parse markdown
+        content = md.render(content);
 
-        if (lastIndex < content.length) {
-            segments.push({
-                type: "text",
-                content: formatText(content.slice(lastIndex)),
-            });
-        }
+        // Third pass: Restore LaTeX blocks
+        content = content.replace(/%%LATEX_BLOCK_(\d+)%%/g, (_, index) => {
+            return `<div class="my-4 px-4 py-2 overflow-x-auto">${latexBlocks[parseInt(index)]}</div>`;
+        });
 
-        return segments;
+        content = content.replace(/%%LATEX_INLINE_(\d+)%%/g, (_, index) => {
+            return latexBlocks[parseInt(index)];
+        });
+
+        // Return as a single segment
+        return [{
+            type: "text",
+            content: content
+        }];
     });
 
     return (
         <div
-            class={`text-base leading-relaxed text-gray-700 ${
+            class={`text-base leading-relaxed text-gray-700 [&_p]:mb-4 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mb-4 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:mb-3 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:mb-2 [&_ul]:list-disc [&_ul]:ml-4 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:ml-4 [&_ol]:mb-4 [&_li]:mb-1 [&_blockquote]:border-l-4 [&_blockquote]:border-gray-300 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:my-4 [&_code]:bg-gray-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_pre]:bg-gray-100 [&_pre]:p-4 [&_pre]:rounded [&_pre]:mb-4 ${
                 props.isTitle
                     ? "text-xl sm:text-2xl md:text-3xl font-bold leading-tight tracking-tight"
                     : ""

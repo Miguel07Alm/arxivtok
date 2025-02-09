@@ -6,6 +6,7 @@ A TikTok-style interface for exploring research papers across multiple sources i
 
 - 📱 TikTok-style vertical swipe interface
 - 🎯 Multi-source paper browsing (arXiv, medRxiv, bioRxiv, PubMed, HackerNews)
+- 🧠 AI-powered abstract simplification using Google's Gemini
 - ❤️ Save favorite papers
 - 🔍 Real-time search with suggestions
 - 📲 Touch-optimized mobile experience
@@ -18,6 +19,7 @@ A TikTok-style interface for exploring research papers across multiple sources i
 - **Framework**: SolidJS + SolidStart
 - **Styling**: TailwindCSS
 - **Math Rendering**: KaTeX
+- **AI**: Google Gemini API
 - **APIs**: 
   - arXiv API
   - medRxiv API
@@ -34,7 +36,12 @@ cd arxiv-tok
 npm install
 ```
 
-2. Run development server:
+2. (Optional) Set up Gemini API key:
+   - Copy `.env.example` to `.env`
+   - Add your Gemini API key to `GEMINI_API_KEY`
+   - If you don't configure this, the app will return the original abstract.
+
+3. Run development server:
 ```bash
 npm run dev
 ```
@@ -56,6 +63,40 @@ The app integrates with multiple academic paper sources:
 - bioRxiv: Biology research preprints
 - PubMed: Life sciences and biomedical literature
 - HackerNews: Tech-focused discussions and papers
+
+## 🏗️ Codebase Structure
+
+The project follows a standard SolidStart application structure:
+
+```
+src/
+├── components/      # Reusable UI components
+│   ├── ui/          # Basic UI elements
+│   ├── PaperCard    # Paper display component
+│   ├── SearchBar    # Search functionality
+│   └── ...          # Other components
+├── lib/             # Core utilities and business logic
+│   ├── papers.ts    # Paper data management
+│   ├── favorites.ts # Favorites functionality
+│   └── progress.ts  # Progress tracking
+├── routes/          # Application routes/pages
+├── app.tsx          # Main application component
+└── app.css          # Global styles
+```
+
+### Key Components
+
+- **PaperCard.tsx**: Main component for displaying individual papers with LaTeX support
+- **PaperRoulette.tsx**: Handles the TikTok-style paper swiping interface
+- **SearchBar.tsx**: Implements real-time search with suggestions
+- **SourceMixer.tsx**: Controls paper source selection and mixing
+- **FavoritesModal.tsx**: Manages saved/favorite papers
+
+### Core Libraries
+
+- **papers.ts**: Core paper data fetching and processing
+- **favorites.ts**: Local storage management for favorite papers
+- **progress.ts**: User progress and achievement tracking
 
 ## 🤝 Contributing
 
